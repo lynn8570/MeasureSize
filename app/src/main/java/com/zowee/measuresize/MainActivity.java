@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 
@@ -13,7 +14,7 @@ import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Mat;
 
-public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 {
+public class MainActivity extends Activity implements CameraBridgeViewBase.CvCameraViewListener2 ,View.OnTouchListener{
 
     private CameraBridgeViewBase javaCameraViev;
 
@@ -29,6 +30,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
                 case LoaderCallbackInterface.SUCCESS:
 
                     javaCameraViev.enableView();
+                    javaCameraViev.setOnTouchListener(MainActivity.this);
                     break;
                 default:
                     super.onManagerConnected(status);
@@ -70,6 +72,7 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
         mRgba = new Mat();
 
+
     }
 
     @Override
@@ -98,8 +101,19 @@ public class MainActivity extends Activity implements CameraBridgeViewBase.CvCam
 
     public void onDestroy() {
         super.onDestroy();
-        if (javaCameraViev != null)
+        if (javaCameraViev != null){
             javaCameraViev.disableView();
+            javaCameraViev.setOnTouchListener(null);
+
+        }
+
+
+
     }
 
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+
+        return false;
+    }
 }
