@@ -6,6 +6,7 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.SeekBar;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase;
@@ -63,7 +64,58 @@ public class BorderDetectActivity extends Activity implements CameraBridgeViewBa
         javaCameraViev = findViewById(R.id.camera_view);
         javaCameraViev.setVisibility(CameraBridgeViewBase.VISIBLE);
         javaCameraViev.setCvCameraViewListener(BorderDetectActivity.this);
+        findSeekbar();
+
     }
+
+
+    private int mBlurSize=7, mCannyTh1=50, mCannyTh2=150;
+
+    private void findSeekbar() {
+        SeekBar blurSizeSeekBar = findViewById(R.id.blur_size);
+        SeekBar cannyThreshold1 = findViewById(R.id.canny_threshold1);
+        SeekBar cannyThreshold2 = findViewById(R.id.canny_threshold2);
+        blurSizeSeekBar.setOnSeekBarChangeListener(onSeekBarChangeListener);
+        cannyThreshold1.setOnSeekBarChangeListener(onSeekBarChangeListener);
+        cannyThreshold2.setOnSeekBarChangeListener(onSeekBarChangeListener);
+    }
+
+    private SeekBar.OnSeekBarChangeListener onSeekBarChangeListener = new SeekBar.OnSeekBarChangeListener() {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+            Log.i("linlian", "progress=" + progress);
+            int seekbarId = seekBar.getId();
+            switch (seekbarId) {
+                case R.id.blur_size:
+
+                    mBlurSize = progress;
+
+                    break;
+                case R.id.canny_threshold1:
+                    mCannyTh1 = progress;
+
+                    break;
+                case R.id.canny_threshold2:
+                    mCannyTh2 = progress;
+
+                    break;
+                default:
+                    break;
+
+            }
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar) {
+
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar) {
+
+        }
+    };
 
     @Override
     protected void onResume() {
@@ -95,14 +147,40 @@ public class BorderDetectActivity extends Activity implements CameraBridgeViewBa
 
     @Override
     public Mat onCameraFrame(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
-
         mRgba = inputFrame.rgba();
         mGray = inputFrame.gray();
 
         Mat cannyMat = new Mat();
         Mat blur = new Mat();
 
-        //模糊化后，减少一些干扰点
+//        模糊化后，减少一些干扰点
+        Imgproc.blur(mGray, blur, new Size(mBlurSize, mBlurSize));
+        //边缘检测
+        Imgproc.Canny(blur, cannyMat, mCannyTh1, mCannyTh2, 3, false);
+
+        List<MatOfPoint> contours = new ArrayList<>();
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(cannyMat, contours, hierarchy, Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE, new Point(0, 0));
+        Scalar color = new Scalar(250, 0, 0);
+
+        contours = filterContours(contours);
+
+        for (int i = 0; i < contours.size(); i++) {
+            Imgproc.drawContours(mRgba, contours, i, color, 2, 8, hierarchy, 0, new Point());
+        }
+
+
+        return cannyMat;
+    }
+
+    private Mat handleImage(CameraBridgeViewBase.CvCameraViewFrame inputFrame) {
+        mRgba = inputFrame.rgba();
+        mGray = inputFrame.gray();
+
+        Mat cannyMat = new Mat();
+        Mat blur = new Mat();
+
+//        模糊化后，减少一些干扰点
         Imgproc.blur(mGray, blur, new Size(7, 7));
         //边缘检测
         Imgproc.Canny(blur, cannyMat, 50, 150, 3, false);
@@ -118,19 +196,20 @@ public class BorderDetectActivity extends Activity implements CameraBridgeViewBa
             Imgproc.drawContours(mRgba, contours, i, color, 2, 8, hierarchy, 0, new Point());
         }
 
+
         return mRgba;
     }
 
     private List<MatOfPoint> filterContours(List<MatOfPoint> contours) {
 
         List<MatOfPoint> newContours = new ArrayList<>();
-        Log.i("linlian"," filterContours: original size ="+contours.size());
-        for (int i =0;i<contours.size();i++){
+        Log.i("linlian", " filterContours: original size =" + contours.size());
+        for (int i = 0; i < contours.size(); i++) {
             MatOfPoint matOfPoint = contours.get(i);
             double area = Imgproc.contourArea(matOfPoint);
-            Log.i("linlian"," i: "+i+" area ="+area);
+            Log.i("linlian", " i: " + i + " area =" + area);
 
-            if(area<100){//面积过滤,太小的过滤掉
+            if (area < 100) {//面积过滤,太小的过滤掉
                 //contours.remove(i);
                 continue;
             }
@@ -139,7 +218,7 @@ public class BorderDetectActivity extends Activity implements CameraBridgeViewBa
 
         }
 
-        Log.i("linlian"," filterContours: after filter size ="+newContours.size());
+        Log.i("linlian", " filterContours: after filter size =" + newContours.size());
         return newContours;
     }
 
@@ -165,6 +244,7 @@ public class BorderDetectActivity extends Activity implements CameraBridgeViewBa
     @Override
     public boolean onTouch(View v, MotionEvent event) {
 
+        Log.i("linlian","onTouch v="+v);
         return false;
     }
 }
